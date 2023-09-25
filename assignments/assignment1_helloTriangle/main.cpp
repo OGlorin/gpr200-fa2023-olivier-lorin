@@ -1,3 +1,4 @@
+#include <librar/shader.h> //At top of file
 #include <stdio.h>
 #include <math.h>
 
@@ -102,31 +103,9 @@ int main() {
 		return 1;
 	}
 
-	//vertex shader
-	const char* vertexShaderSource = R"(
-	#version 450
-	layout(location = 0) in vec3 vPos;
-	layout(location = 1) in vec4 vColor;
-	out vec4 Color;
-	uniform float _Time;
-	void main(){
-		Color = vColor;
-		vec3 offset = vec3(0,sin(vPos.x + _Time),0)*0.5;
-		gl_Position = vec4(vPos + offset,1.0);
-	}
-)";
-
-
-	//fragment shader
-	const char* fragmentShaderSource = R"(
-	#version 450
-	out vec4 FragColor;
-	in vec4 Color;
-	uniform float _Time;
-	void main(){
-		FragColor = Color *abs(sin(_Time));
-	}
-)";
+	std::string vertexShaderSource =librar::loadShaderSourceFromFile("assets/vertexShader.vert");
+	std::string fragmentShaderSource = librar::loadShaderSourceFromFile("assets/fragmentShader.frag");
+	unsigned int shader = createShaderProgram(vertexShaderSource.c_str(), fragmentShaderSource.c_str());
 
 	unsigned int shader = createShaderProgram(vertexShaderSource, fragmentShaderSource);
 	unsigned int vao = createVAO(vertices, 3);

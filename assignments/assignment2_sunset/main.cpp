@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <math.h>
-
+#include <librar/shader.h>
 #include <ew/external/glad.h>
 #include <ew/ewMath/ewMath.h>
 #include <GLFW/glfw3.h>
@@ -8,42 +8,43 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
-unsigned int createShader(GLenum shaderType, const char* sourceCode);
-unsigned int createShaderProgram(const char* vertexShaderSource, const char* fragmentShaderSource);
-unsigned int createVAO(float* vertexData, int numVertices);
 void framebufferSizeCallback(GLFWwindow* window, int width, int height);
 
 const int SCREEN_WIDTH = 1080;
 const int SCREEN_HEIGHT = 720;
 
-float vertices[9] = {
-	//x   //y  //z   
-	-0.5, -0.5, 0.0, 
-	 0.5, -0.5, 0.0,
-	 0.0,  0.5, 0.0 
+librar::Vertex vertices[4] = {
+	//x    y    z    u    v
+   { 1.0 , 1.0 , 0.0 , 1.0 , 1.0 }, //Top right
+   { -1.0 , 1.0 , 0.0 , 0.0 , 1.0 }, //Top Left
+   { -1.0 , -1.0 , 0.0 , 0.0 , 0.0 }, //Bottom left
+   { 1.0 , -1.0 , 0.0 , 1.0 , 0.0 }  //Bottom right
 };
 
-const char* vertexShaderSource = R"(
-	#version 450
-	layout(location = 0) in vec3 vPos;
-	void main(){
-		gl_Position = vec4(vPos,1.0);
-	}
-)";
+unsigned int indices[6] = {
+	0 , 1 , 2 , //Triangle 1
+	0 , 2 , 3  //Triangle 2
+};
 
-const char* fragmentShaderSource = R"(
-	#version 450
-	out vec4 FragColor;
-	uniform vec3 _Color;
-	uniform float _Brightness;
-	void main(){
-		FragColor = vec4(_Color * _Brightness,1.0);
-	}
-)";
+float SkyColor[3][3] = {
+	//Day Colors
+	{1.0, 0.17, 0.0}, {0.0, 0.2, 0.3},
+	//Night Color
+	{0.0, 0.0, 0.0}
+};
 
-float triangleColor[3] = { 1.0f, 0.5f, 0.0f };
-float triangleBrightness = 1.0f;
-bool showImGUIDemoWindow = true;
+float SunColor[2][3] = {
+	{0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}
+};
+
+float SunRadius = 0.3;
+float SunSpeed = 0.7;
+
+float HillColor[1][3] = {
+	{0.0, 0.0, 0.0}
+};
+
+bool showImGUIDemoWindow = false;
 
 int main() {
 	printf("Initializing...");
@@ -70,11 +71,9 @@ int main() {
 	ImGui::CreateContext();
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init();
-
-	unsigned int shader = createShaderProgram(vertexShaderSource, fragmentShaderSource);
-	unsigned int vao = createVAO(vertices, 3);
-
-	glUseProgram(shader);
+	unsigned int vao = librar::createVAO(vertices, 4, indices, 6);
+	librar::Shader shader("assets/vertexShader.vert", "assets/fragmentShader.frag");
+	shader.use();
 	glBindVertexArray(vao);
 
 	while (!glfwWindowShouldClose(window)) {
@@ -82,11 +81,17 @@ int main() {
 		glClearColor(0.3f, 0.4f, 0.9f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		//Set uniforms
-		glUniform3f(glGetUniformLocation(shader, "_Color"), triangleColor[0], triangleColor[1], triangleColor[2]);
-		glUniform1f(glGetUniformLocation(shader,"_Brightness"), triangleBrightness);
-
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		//Set uniform
+		shader.setVec2("_Resolution", (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT);
+		shader.setFloat("_Time", (float)glfwGetTime());
+		shader.setFloat("_SunSpeed", SunSpeed);
+		shader.setFloat("_SunRadius", SunRadius);
+		shader.setVec3Array("_SkyColor", 4, SkyColor);
+		shader.setVec3Array("_SunColor", 2, SunColor);
+		shader.setVec3Array("_HillColor", 2, HillColor);
+		//In render loop...
+		//Draw using indices
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
 
 		//Render UI
 		{
@@ -96,8 +101,28 @@ int main() {
 
 			ImGui::Begin("Settings");
 			ImGui::Checkbox("Show Demo Window", &showImGUIDemoWindow);
-			ImGui::ColorEdit3("Color", triangleColor);
-			ImGui::SliderFloat("Brightness", &triangleBrightness, 0.0f, 1.0f);
+
+			ImGui::Separator();
+			ImGui::Text("Daytime Colors");
+			ImGui::ColorEdit3("Top", SkyColor[1]);
+			ImGui::ColorEdit3("Bottom", SkyColor[0]);
+
+			ImGui::Separator();
+			ImGui::Text("Nighttime Color");
+			ImGui::ColorEdit3("Color", SkyColor[2]);
+
+			ImGui::Separator();
+			ImGui::Text("Sun Settings");
+			ImGui::ColorEdit3("Peak Color", SunColor[1]);
+			ImGui::ColorEdit3("Base Color", SunColor[0]);
+			ImGui::SliderFloat("Radius", &SunRadius, 0.1, 1.0);
+			ImGui::SliderFloat("Speed", &SunSpeed, 0.1, 10.0);
+
+			ImGui::Separator();
+			ImGui::Text("Hill Color");
+			ImGui::ColorEdit3("Color", HillColor[0]);
+			ImGui::Separator();
+
 			ImGui::End();
 			if (showImGUIDemoWindow) {
 				ImGui::ShowDemoWindow(&showImGUIDemoWindow);
@@ -110,67 +135,6 @@ int main() {
 		glfwSwapBuffers(window);
 	}
 	printf("Shutting down...");
-}
-
-
-unsigned int createShader(GLenum shaderType, const char* sourceCode) {
-	//Create a new vertex shader object
-	unsigned int shader = glCreateShader(shaderType);
-	//Supply the shader object with source code
-	glShaderSource(shader, 1, &sourceCode, NULL);
-	//Compile the shader object
-	glCompileShader(shader);
-	int success;
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-	if (!success) {
-		//512 is an arbitrary length, but should be plenty of characters for our error message.
-		char infoLog[512];
-		glGetShaderInfoLog(shader, 512, NULL, infoLog);
-		printf("Failed to compile shader: %s", infoLog);
-	}
-	return shader;
-}
-
-unsigned int createShaderProgram(const char* vertexShaderSource, const char* fragmentShaderSource) {
-	unsigned int vertexShader = createShader(GL_VERTEX_SHADER, vertexShaderSource);
-	unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
-
-	unsigned int shaderProgram = glCreateProgram();
-	//Attach each stage
-	glAttachShader(shaderProgram, vertexShader);
-	glAttachShader(shaderProgram, fragmentShader);
-	//Link all the stages together
-	glLinkProgram(shaderProgram);
-	int success;
-	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-	if (!success) {
-		char infoLog[512];
-		glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-		printf("Failed to link shader program: %s", infoLog);
-	}
-	//The linked program now contains our compiled code, so we can delete these intermediate objects
-	glDeleteShader(vertexShader);
-	glDeleteShader(fragmentShader);
-	return shaderProgram;
-}
-
-unsigned int createVAO(float* vertexData, int numVertices) {
-	unsigned int vao;
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
-
-	//Define a new buffer id
-	unsigned int vbo;
-	glGenBuffers(1, &vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	//Allocate space for + send vertex data to GPU.
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * numVertices * 3, vertexData, GL_STATIC_DRAW);
-
-	//Position attribute
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (const void*)0);
-	glEnableVertexAttribArray(0);
-
-	return vao;
 }
 
 void framebufferSizeCallback(GLFWwindow* window, int width, int height)
