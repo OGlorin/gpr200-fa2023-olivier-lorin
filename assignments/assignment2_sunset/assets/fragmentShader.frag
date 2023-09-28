@@ -43,11 +43,12 @@ void main()
     
     //hills
     float hills = -0.40 + (0.1*(sin(uv.x), 3.0) + 0.2*pow(cosh(3.0*uv.x), -1.0));
-    hills = step(abs(hills)-0.25,uv.y);
+    hills = step(hills-0.25,uv.y);
     
     dayShift = mix(hillColor, dayShift, hills*1.0);
 
     // Output to screen
     fragColor = vec4(dayShift,1.0);
+    //fragColor = vec4(uv, 0.0, 1.0);
 }
 

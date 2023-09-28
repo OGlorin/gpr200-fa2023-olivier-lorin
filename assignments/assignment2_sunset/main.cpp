@@ -113,8 +113,8 @@ int main() {
 
 			ImGui::Separator();
 			ImGui::Text("Sun Settings");
-			ImGui::ColorEdit3("Peak Color", SunColor[1]);
-			ImGui::ColorEdit3("Base Color", SunColor[0]);
+			ImGui::ColorEdit3("Sunrise Color", SunColor[1]);
+			ImGui::ColorEdit3("Sunset Color", SunColor[0]);
 			ImGui::SliderFloat("Radius", &SunRadius, 0.1, 1.0);
 			ImGui::SliderFloat("Speed", &SunSpeed, 0.1, 10.0);
 
