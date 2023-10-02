@@ -7,7 +7,7 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
-
+#include "librar/texture.h"
 #include <ew/shader.h>
 
 struct Vertex {
@@ -64,6 +64,7 @@ int main() {
 
 	glBindVertexArray(quadVAO);
 
+	unsigned int testTexture = loadTexture("assets/aincrad.jfif", GL_REPEAT, GL_NEAREST_MIPMAP_LINEAR, GL_NEAREST_MIPMAP_LINEAR);
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		glClearColor(0.3f, 0.4f, 0.9f, 1.0f);
