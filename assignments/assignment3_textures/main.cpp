@@ -59,20 +59,46 @@ int main() {
 	ImGui_ImplOpenGL3_Init();
 
 	ew::Shader shader("assets/vertexShader.vert", "assets/fragmentShader.frag");
+	ew::Shader characterShader("assets/character.vert", "assets/character.frag");
+
 
 	unsigned int quadVAO = createVAO(vertices, 4, indices, 6);
 
 	glBindVertexArray(quadVAO);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	unsigned int testTexture = loadTexture("assets/aincrad.jfif", GL_REPEAT, GL_NEAREST_MIPMAP_LINEAR, GL_NEAREST_MIPMAP_LINEAR);
+	unsigned int textureA = loadTexture("assets/aincrad.jfif", GL_REPEAT, GL_NEAREST_MIPMAP_LINEAR, GL_NEAREST_MIPMAP_LINEAR);
+	unsigned int textureB = loadTexture("assets/clouds.jfif", GL_REPEAT, GL_NEAREST_MIPMAP_LINEAR, GL_NEAREST_MIPMAP_LINEAR);
+	unsigned int character = loadTexture("assets/kirbo.png", GL_CLAMP_TO_EDGE, GL_NEAREST_MIPMAP_NEAREST, GL_LINEAR_MIPMAP_LINEAR);
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		glClearColor(0.3f, 0.4f, 0.9f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
+		
+		//Place textureA in unit 0
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, textureA);
+		//Place textureB in unit 1
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, textureB);
 
 		//Set uniforms
 		shader.use();
 
+		//Make sampler2D _BrickTexture sample from unit 0
+		shader.setInt("_Texture", 0);
+		//Make sampler2D _MarioTexture sample from unit 1
+		shader.setInt("_NoiseTexture", 1);
+
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, NULL);
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, character);
+
+		characterShader.use();
+		characterShader.setInt("_Texture", 0);
+		characterShader.setFloat("_Time", (float)glfwGetTime());
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, NULL);
 
 		//Render UI

@@ -8,14 +8,15 @@ unsigned int loadTexture(const char* filePath, int wrapMode, int minFilter, int 
 
 	int width, height, numComponents;
 	unsigned char* data = stbi_load(filePath, &width, &height, &numComponents, 0);
-		if (data == NULL) {
-			printf("Failed to load image %s", filePath);
-			stbi_image_free(data);
-			return 0;
-		}
+	if (data == NULL) {
+		printf("Failed to load image %s", filePath);
+		stbi_image_free(data);
+		return 0;
+	}
+
+	unsigned int texture;
 	glGenTextures(1, &texture);
 	glBindTexture(GL_TEXTURE_2D, texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 
 	GLenum storage;
 	switch (numComponents)
@@ -33,18 +34,14 @@ unsigned int loadTexture(const char* filePath, int wrapMode, int minFilter, int 
 		storage = GL_RGBA;
 		break;
 	}
-
-	unsigned int brickTexture = loadTexture("assets/brick.png", GL_REPEAT, GL_LINEAR);
+	glTexImage2D(GL_TEXTURE_2D, 0, storage, width, height, 0, storage, GL_UNSIGNED_BYTE, data);
 	
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapMode);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapMode);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minFilter);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magFilter);
 
 	glGenerateMipmap(GL_TEXTURE_2D);
-
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, brickTexture);
 
 	stbi_image_free(data);
 	return texture;
